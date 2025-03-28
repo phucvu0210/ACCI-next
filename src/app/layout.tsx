@@ -3,6 +3,7 @@ import "./globals.css";
 import React from "react";
 import { Metadata } from "next";
 import { Toaster } from "@/components/ui/sonner"
+import { ThemeProvider } from "@/components/theme-provider"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,12 +28,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
     <body
       className={ `${ geistSans.variable } ${ geistMono.variable } antialiased` }
     >
-    <div className='h-screen w-screen bg-gray-200 flex items-center justify-center'>
-      { children }
+    <div className='h-screen w-screen bg-black flex items-center justify-center'>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="dark"
+        enableSystem
+        disableTransitionOnChange
+      >
+        { children }
+      </ThemeProvider>
     </div>
     <Toaster />
     </body>
