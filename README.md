@@ -5,6 +5,8 @@
 This is a demo project built with Next.js, Prisma, and MS SQL. It provides a simple login page and basic CRUD operations
 with a Prisma-powered backend.
 
+If you have any questions or need further assistance, feel free to reach out via email at ndmanh3003@gmail.com
+
 ## ⚙️ Getting Started
 
 1. **Install dependencies**:  
