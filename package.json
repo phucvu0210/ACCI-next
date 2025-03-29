@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack & npx prisma studio",
+    "dev": "next dev --turbopack & npx prisma studio --browser none --port 5555",
     "db": " npx prisma generate & npx prisma db push",
     "build": "next build",
     "start": "next start",
