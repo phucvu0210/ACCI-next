@@ -3,7 +3,6 @@ import { toast } from "sonner"
 interface IRequest {
   _model: string
   _method: "PUT" | "GET" | "POST" | "DELETE"
-  _id?: number
   _relation?: string[]
   _where?: object
 }
