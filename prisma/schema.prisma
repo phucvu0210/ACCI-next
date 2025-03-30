@@ -26,3 +26,165 @@ model Role {
   name String @unique
   User User[]
 }
+
+
+model NhanVien {
+  MaNV     Int     @id @default(autoincrement())
+  HoTen    String  @db.VarChar(100)
+  SDT      String  @unique @db.VarChar(11)
+  Email    String  @unique @db.VarChar(100)
+  MatKhau  String?
+  NgaySinh DateTime
+  DiaChi   String? @db.VarChar(100)
+  ChucVu   String  @db.VarChar(20)
+
+  LichThi_PhongThi   LichThi_PhongThi[]
+  ThanhToan          ThanhToan[]
+  KetQuaThi          KetQuaThi[]
+  PhieuDangKy        PhieuDangKy[]
+}
+
+model KhachHang {
+  MaKH   Int     @id @default(autoincrement())
+  TenKH  String  @db.VarChar(100)
+  LoaiKH String  @db.VarChar(50)
+  SDT    String  @unique @db.VarChar(11)
+  Email  String  @unique
+  DiaChi String?
+  PhieuDangKy PhieuDangKy[]
+}
+
+model PhieuDangKy {
+  MaPDK     Int      @id @default(autoincrement())
+  NgayDangKy DateTime
+  TrangThai  String
+  TongTien   Int
+  MaKH       Int
+  MaNVTN     Int
+  KhachHang  KhachHang  @relation(fields: [MaKH], references: [MaKH])
+  NhanVien   NhanVien   @relation(fields: [MaNVTN], references: [MaNV])
+  ChiTietDangKy ChiTietDangKy[]
+  ThanhToan     ThanhToan[]
+}
+
+model ChiTietDangKy {
+  MaCTDK        Int     @id @default(autoincrement())
+  HoTenThiSinh  String  @db.VarChar(100)
+  NgaySinh      DateTime
+  CCCD          String  @unique @db.VarChar(12)
+  MaPDK         Int
+  LichThiID     Int
+  PhieuDangKy   PhieuDangKy @relation(fields: [MaPDK], references: [MaPDK])
+  LichThi       LichThi    @relation(fields: [LichThiID], references: [MaLichThi])
+  PhieuDuThi    PhieuDuThi[]
+}
+
+model KyThi {
+  MaKyThi Int    @id @default(autoincrement())
+  TenKT   String @db.VarChar(200)
+  Muc     String @db.VarChar(50)
+  Phi     Int
+  MoTa    String?
+  LichThi LichThi[]
+}
+
+model LichThi {
+  MaLichThi     Int     @id @default(autoincrement())
+  ThoiGianThi   DateTime
+  SoThiSinhDK   Int     @default(0)
+  SoThiSinhTD   Int
+  MaKyThi       Int
+  KyThi         KyThi   @relation(fields: [MaKyThi], references: [MaKyThi])
+  PhongThi      LichThi_PhongThi[]
+  ChiTietDangKy ChiTietDangKy[]
+  PhieuDuThi    PhieuDuThi[]
+}
+
+model PhongThi {
+  MaPhong  Int     @id @default(autoincrement())
+  TenPhong String  @unique
+  SucChua  Int
+  LichThiPhong LichThi_PhongThi[]
+  PhieuDuThi    PhieuDuThi[]
+}
+
+model LichThi_PhongThi {
+  MaLichThi   Int
+  MaPhong     Int
+  SoThiSinh   Int
+  MaNV        Int
+  LichThi     LichThi   @relation(fields: [MaLichThi], references: [MaLichThi])
+  PhongThi    PhongThi  @relation(fields: [MaPhong], references: [MaPhong])
+  NhanVien    NhanVien  @relation(fields: [MaNV], references: [MaNV])
+  @@id([MaLichThi, MaPhong])
+}
+
+model PhieuDuThi {
+  MaPDT         Int      @id @default(autoincrement())
+  NgayPhatHanh  DateTime
+  SoBaoDanh     Int      @unique
+  TrangThai     String
+  MaCTDK        Int
+  MaLichThi     Int
+  MaPhongThi    Int
+  ChiTietDangKy ChiTietDangKy @relation(fields: [MaCTDK], references: [MaCTDK])
+  LichThi       LichThi        @relation(fields: [MaLichThi], references: [MaLichThi], onUpdate: NoAction, onDelete: NoAction)
+  PhongThi      PhongThi       @relation(fields: [MaPhongThi], references: [MaPhong])
+  PhieuGiaHan   PhieuGiaHan[]
+  KetQuaThi     KetQuaThi?
+}
+
+model ThanhToan {
+  MaTT         Int       @id @default(autoincrement())
+  ThoiGianTT   DateTime
+  HinhThucTT   String
+  SoTien       Int
+  GiamGia      Float     @default(0)
+  MaGiaoDich   Int       @unique
+  TrangThai    String
+  LoaiPhieu    String
+  MaPDK        Int
+  MaPGH        Int?
+  MaNVKT       Int
+  PhieuDangKy  PhieuDangKy     @relation(fields: [MaPDK], references: [MaPDK], onUpdate: NoAction, onDelete: NoAction)
+  PhieuGiaHan  PhieuGiaHan?    @relation(fields: [MaPGH], references: [MaPGH], onUpdate: NoAction, onDelete: NoAction)
+  NhanVien     NhanVien        @relation(fields: [MaNVKT], references: [MaNV], onUpdate: NoAction, onDelete: NoAction)
+}
+
+model PhieuGiaHan {
+  MaPGH             Int      @id @default(autoincrement())
+  TGThiCu           DateTime
+  TGThiMoi          DateTime
+  TGLapPhieu        DateTime
+  PhiGiaHan         Int
+  LyDo              String?
+  HinhAnhMinhChung  Bytes?
+  MaPDT             Int
+  PhieuDuThi        PhieuDuThi @relation(fields: [MaPDT], references: [MaPDT])
+  ThanhToan         ThanhToan[]
+}
+
+model KetQuaThi {
+  MaKQ      Int        @id @default(autoincrement())
+  DiemThi   Int
+  MaPDT     Int     @unique
+  MaNVNL    Int
+  PhieuDuThi PhieuDuThi @relation(fields: [MaPDT], references: [MaPDT])
+  NhanVien   NhanVien    @relation(fields: [MaNVNL], references: [MaNV], onUpdate: NoAction, onDelete: NoAction)
+  ChungChi   CHUNGCHI?
+}
+
+model CHUNGCHI {
+  MaCC            Int        @id @default(autoincrement())
+  NgayCap         DateTime
+  TrangThaiNhan   String
+  MaKQ            Int       @unique
+  KetQuaThi       KetQuaThi  @relation(fields: [MaKQ], references: [MaKQ])
+}
+
+model QUYDINH {
+  MaQD              Int     @id @default(autoincrement())
+  SoLuongToiThieu Int
+  PhiGiaHan       Int
+}
+
