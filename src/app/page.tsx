@@ -16,7 +16,12 @@ type FormValues = {
 };
 
 export default function Home() {
-  const form = useForm<FormValues>();
+  const form = useForm<FormValues>({
+    defaultValues: {
+      phone: "",
+      password: "",
+    },
+  });
   const [isLogin, setIsLogin] = React.useState<boolean | null>(null)
   
   const onSubmit = async(values: FormValues) => {
