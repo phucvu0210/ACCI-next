@@ -59,7 +59,7 @@ model PhieuDangKy {
   maPDK      Int      @id @default(autoincrement())
   ngayDangKy DateTime
   trangThai  String
-  tongTien   Int
+  tongTien   Float
   maKH       Int
   maNVTN     Int
 
@@ -88,7 +88,7 @@ model KyThi {
   maKyThi Int    @id @default(autoincrement())
   tenKT   String
   muc     String
-  phi     Int
+  phi     Float
   moTa    String?
   
   lichThi     LichThi[]
@@ -150,7 +150,7 @@ model ThanhToan {
   maTT        Int    @id @default(autoincrement())
   thoiGianTT  DateTime
   hinhThucTT  String
-  soTien      Int
+  soTien      Float
   giamGia     Float  @default(0)
   maGiaoDich  Int?
   trangThai   String
@@ -169,7 +169,7 @@ model PhieuGiaHan {
   tgThiCu     DateTime
   tgThiMoi    DateTime
   tgLapPhieu  DateTime
-  phiGiaHan   Int
+  phiGiaHan   Float
   lyDo        String?
   hinhAnhMinhChung Bytes?
   maPDT       Int
@@ -181,7 +181,7 @@ model PhieuGiaHan {
 
 model KetQuaThi {
   maKQ    Int  @id @default(autoincrement())
-  diemThi Int
+  diemThi Float
   maPDT   Int  @unique
   maNVNL  Int
 
@@ -203,6 +203,6 @@ model ChungChi {
 model QuyDinh {
   maQD            Int     @id @default(autoincrement())
   soLuongToiThieu Int
-  phiGiaHan       Int
+  phiGiaHan       Float
 }
 
