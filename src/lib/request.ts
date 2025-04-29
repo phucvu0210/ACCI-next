@@ -13,7 +13,7 @@ interface IResponse {
 }
 
 export async function createRequest(data: IRequest) {
-  data._model = data._model.toLowerCase();
+  //data._model = data._model.toLowerCase();
   const response: IResponse = await Promise.resolve()
     .then(() => fetch('/api/users', {
       method: 'POST',
