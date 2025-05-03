@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { createRequest } from "@/lib/request";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-//import { set } from "react-hook-form";
+import { useAuthStore } from '@/store/auth';
+import { useRouter } from "next/navigation";
 
 type KH = {
   maKH: number;
@@ -24,15 +25,11 @@ export default function CustomerRegistrationPage() {
     sdt: "",
     email: "",
     diaChi: "",
-    loaiKH: "Tu Do", 
+    loaiKH: "Tu Do",
   });
 
   const [existingCustomerId, setExistingCustomerId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showSummary, setShowSummary] = useState(false);
-  const [summaryContent, setSummaryContent] = useState(""); 
-  const [contentPdf, setPdf] = useState(""); 
-  const [savedEmail, setSavedEmail] = useState("");
   const [searchResults, setSearchResults] = useState<KH[]>([]);
   const [chiTietDangKyList, setChiTietDangKyList] = useState<any[]>([]);
   const [isAddingChiTiet, setIsAddingChiTiet] = useState(false);
@@ -40,15 +37,17 @@ export default function CustomerRegistrationPage() {
     hoTenThiSinh: string;
     cccd: string;
     ngaySinh: string;
-    maLichThi: string | number; 
+    maLichThi: string | number;
   }>({
     hoTenThiSinh: "",
     cccd: "",
     ngaySinh: "",
     maLichThi: "",
   });
-  
+
   const [scheduleList, setScheduleList] = useState<any[]>([]);
+  const currentUser = useAuthStore((state) => state.user);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchSchedules = async () => {
@@ -98,7 +97,7 @@ export default function CustomerRegistrationPage() {
       email: kh.email,
       sdt: kh.sdt,
       diaChi: kh.diaChi || "",
-      loaiKH: kh.loaiKH || "Tu Do",
+      loaiKH: kh.loaiKH || "individual",
     });
     setExistingCustomerId(kh.maKH);
     setSearchResults([]);
@@ -120,7 +119,18 @@ export default function CustomerRegistrationPage() {
       return;
     }
 
+    const selectedSchedule = scheduleList.find((s) => s.maLichThi === Number(chiTietForm.maLichThi));
+    if (selectedSchedule && selectedSchedule.soThiSinhDK >= selectedSchedule.soThiSinhTD) {
+      toast.error(`Schedule ${selectedSchedule.maLichThi} has reached maximum capacity (${selectedSchedule.soThiSinhTD}).`);
+      return;
+    }
+
     setChiTietDangKyList([...chiTietDangKyList, chiTietForm]);
+    setScheduleList((prev) =>
+      prev.map((s) =>
+        s.maLichThi === Number(chiTietForm.maLichThi) ? { ...s, soThiSinhDK: s.soThiSinhDK + 1 } : s
+      )
+    );
     setChiTietForm({ hoTenThiSinh: "", cccd: "", ngaySinh: "", maLichThi: "" });
     setIsAddingChiTiet(false);
   };
@@ -130,7 +140,12 @@ export default function CustomerRegistrationPage() {
       toast.error("Please add at least one ChiTietDangKy.");
       return;
     }
-  
+
+    if (!currentUser) {
+      toast.error("User not logged in.");
+      return;
+    }
+
     try {
       let khachHang = existingCustomerId;
       if (!khachHang) {
@@ -141,15 +156,14 @@ export default function CustomerRegistrationPage() {
         }) as { maKH: number };
 
         if (!newKhachHang) {
-          toast.error("Create KhachHang failed");
-          return;
+          throw new Error("Create KhachHang failed");
         }
 
         khachHang = newKhachHang.maKH;
       }
-  
+
       const kyThiMap = new Map<number, { phi: number; count: number }>();
-  
+
       for (const chiTiet of chiTietDangKyList) {
         const schedule = scheduleList.find(
           (schedule) => schedule.maLichThi === Number(chiTiet.maLichThi)
@@ -163,14 +177,12 @@ export default function CustomerRegistrationPage() {
           kyThiMap.get(maKyThi)!.count += 1;
         }
       }
-  
+
       let tongTien = 0;
       kyThiMap.forEach(({ phi, count }) => {
         tongTien += phi * count;
       });
-  
-      console.log(">>> tongTien:", tongTien);
-  
+
       const phieuDangKy = await createRequest({
         _model: "PhieuDangKy",
         _method: "POST",
@@ -178,15 +190,25 @@ export default function CustomerRegistrationPage() {
         trangThai: "Chua thanh toan",
         tongTien,
         maKH: khachHang,
-        maNVTN: 1,
+        maNVTN: currentUser.maNV,
       }) as { maPDK: number };
-  
+
       if (!phieuDangKy) {
-        toast.error("Fail create PhieuDangKy.");
-        return;
+        throw new Error("Fail create PhieuDangKy.");
       }
-  
-      for (const chiTiet of chiTietDangKyList) {
+
+      // Đảm bảo tất cả các thao tác với database hoàn tất trước khi chuyển hướng
+      const databaseUpdates = chiTietDangKyList.map(async (chiTiet) => {
+        const schedule = scheduleList.find((s) => s.maLichThi === Number(chiTiet.maLichThi));
+        if (schedule) {
+          await createRequest({
+            _model: "LichThi",
+            _method: "PUT",
+            _where: { maLichThi: schedule.maLichThi },
+            soThiSinhDK: schedule.soThiSinhDK,
+          });
+        }
+
         await createRequest({
           _model: "ChiTietDangKy",
           _method: "POST",
@@ -196,74 +218,26 @@ export default function CustomerRegistrationPage() {
           maLichThi: Number(chiTiet.maLichThi),
           maPDK: phieuDangKy.maPDK,
         });
-      }
-  
+      });
+
+      // Chờ tất cả các thao tác với database hoàn tất
+      await Promise.all(databaseUpdates);
+
       toast.success("Registration successful");
 
-      const summary = `<strong>Customer Information</strong><br/>` +
-        `Name: ${formData.tenKH}<br/>` +
-        `Phone: ${formData.sdt}<br/>` +
-        `Email: ${formData.email}<br/>` +
-        `Address: ${formData.diaChi}<br/><br/>` +
-        `<strong>Details</strong><br/>` +
-        chiTietDangKyList
-          .map((chiTiet) => {
-            const selectedSchedule = scheduleList.find(
-              (schedule) => Number(schedule.maLichThi) === Number(chiTiet.maLichThi)
-            );
+      // Chỉ chuyển hướng sau khi tất cả dữ liệu đã được lưu vào database
+      router.push(`/email?maPDK=${phieuDangKy.maPDK}`);
 
-            return (
-              `Name: ${chiTiet.hoTenThiSinh}<br/>` +
-              `CCCD: ${chiTiet.cccd}<br/>` +
-              `Date of Birth: ${chiTiet.ngaySinh}<br/>` +
-              (selectedSchedule
-                ? `   Schedule: ${new Date(selectedSchedule.thoiGianThi).toLocaleString()} - ${selectedSchedule.kyThi.tenKT}<br/><br/>`
-                : "")
-            );
-          })
-          .join("\n");
-
-          const pdfFormat = `Customer Information\n` +
-          `Name: ${formData.tenKH}\n` +
-          `Phone: ${formData.sdt}\n` +
-          `Email: ${formData.email}\n` +
-          `Address: ${formData.diaChi}\n\n` +
-          `Details\n` +
-          chiTietDangKyList
-            .map((chiTiet) => {
-              const selectedSchedule = scheduleList.find(
-                (schedule) => Number(schedule.maLichThi) === Number(chiTiet.maLichThi)
-              );
-
-              return (
-                `Name: ${chiTiet.hoTenThiSinh}\n` +
-                `CCCD: ${chiTiet.cccd}\n` +
-                `Date of Birth: ${chiTiet.ngaySinh}\n` +
-                (selectedSchedule
-                  ? `Schedule: ${new Date(selectedSchedule.thoiGianThi).toLocaleString()} - ${selectedSchedule.kyThi.tenKT}\n\n`
-                  : "")
-              );
-            })
-            .join("\n");
-  
-      const emailForSummary = formData.email;
-
-      setSummaryContent(summary);
-      setPdf(pdfFormat);
-      setShowSummary(true);
-      
+      // Reset state sau khi chuyển hướng
       setChiTietDangKyList([]);
       setFormData({ tenKH: "", sdt: "", email: "", diaChi: "", loaiKH: "Tu Do" });
       setExistingCustomerId(null);
-      
-      setSavedEmail(emailForSummary);
-      
+
     } catch (error) {
       console.error(error);
-      toast.error("Error registration.");
+      toast.error("Error during registration: " + (error.message || "Unknown error"));
     }
   };
-  
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -287,189 +261,170 @@ export default function CustomerRegistrationPage() {
     setFormData({ tenKH: "", sdt: "", email: "", diaChi: "", loaiKH: "Tu Do" });
   };
 
-  const handleSendEmail = async () => {
-    try {
-      const response = await fetch("/api/send-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: savedEmail,
-          content: contentPdf,
-        }),
-      });
-  
-      if (!response.ok) {
-        throw new Error("Failed to send email");
-      }
-  
-      toast.success("Email sent successfully");
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 2000);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to send email");
-    }
-  };  
-
   return (
-    <div className="min-h-screen w-screen bg-amber-50">
+    <div className="min-h-screen w-screen bg-amber-50 font-aftersick">
       <div className="p-6">
         <div className="bg-[#FDFAE7] border-none">
           <div className="p-6">
-  
-            {showSummary ? (
-              // khung tom tat
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-orange-500 font-medium text-sm">ACCI</h4>
-                  <h1 className="text-2xl font-semibold mt-1 text-black">
-                    Register for <span className="text-orange-500">Individual Customer</span>
-                  </h1>
-                </div>
-                <div
-                  className="w-full h-96 p-4 rounded-md border border-[#F16F33] text-black bg-[#FCE2A9] overflow-y-auto"
-                  dangerouslySetInnerHTML={{ __html: summaryContent }}
-                />
-                <div className="flex justify-end">
-                <Button
-                  className="bg-orange-500 hover:bg-orange-600 text-black rounded-full px-6 py-2"
-                  onClick={handleSendEmail}
-                >
-                  Email
-                </Button>
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-orange-500 font-medium text-sm font-aftersick">ACCI</h4>
+                <h1 className="text-2xl font-semibold mt-1 text-black font-aftersick">
+                  Register for <span className="text-orange-500">Individual Customer</span>
+                </h1>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium mb-2 text-black font-aftersick">Search</p>
+                <div className="relative">
+                  <Input
+                    className="pl-3 pr-10 py-2 rounded-4xl border-black border w-full text-black font-goldplay"
+                    placeholder="Alice"
+                    value={searchQuery}
+                    onChange={(e) => handleSearch(e.target.value)}
+                  />
+                  <Search className="absolute right-3 top-2.5 h-4 w-4" />
+                  {searchResults.length > 0 && (
+                    <ul className="absolute bg-white border rounded-md mt-1 w-full z-10 max-h-60 overflow-y-auto font-goldplay">
+                      {searchResults.map((kh, index) => (
+                        <li
+                          key={index}
+                          className="p-2 hover:bg-gray-100 text-black cursor-pointer font-goldplay"
+                          onClick={() => handleSelectKH(kh)}
+                        >
+                          {`${kh.tenKH} - ${kh.email} - ${kh.sdt}`}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
-            ) : (
-              // Form dang ky
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-orange-500 font-medium text-sm">ACCI</h4>
-                  <h1 className="text-2xl font-semibold mt-1 text-black">
-                    Register for <span className="text-orange-500">Individual Customer</span>
-                  </h1>
-                </div>
-  
-                <div>
-                  <p className="text-sm font-medium mb-2 text-black">Search</p>
-                  <div className="relative">
-                    <Input
-                      className="pl-3 pr-10 py-2 rounded-4xl border-black border w-full text-black"
-                      placeholder="Alice"
-                      value={searchQuery}
-                      onChange={(e) => handleSearch(e.target.value)}
-                    />
-                    <Search className="absolute right-3 top-2.5 h-4 w-4" />
-                    {searchResults.length > 0 && (
-                      <ul className="absolute bg-white border rounded-md mt-1 w-full z-10 max-h-60 overflow-y-auto">
-                        {searchResults.map((kh, index) => (
-                          <li
-                            key={index}
-                            className="p-2 hover:bg-gray-100 text-black cursor-pointer"
-                            onClick={() => handleSelectKH(kh)}
-                          >
-                            {`${kh.tenKH} - ${kh.email} - ${kh.sdt}`}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-  
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <InputField label="Name" name="tenKH" value={formData.tenKH} onChange={handleChange} placeholder="Alice" />
-                  <InputField label="Phone" name="sdt" value={formData.sdt} onChange={handleChange} placeholder="+84123456789" />
-                  <InputField label="Email" name="email" value={formData.email} onChange={handleChange} placeholder="abc@example.com" />
-                  <InputField label="Address" name="diaChi" value={formData.diaChi} onChange={handleChange} placeholder="HOME" />
-  
-                  {chiTietDangKyList.map((chiTiet, index) => {
-                    const selectedSchedule = scheduleList.find(
-                      (schedule) => Number(schedule.maLichThi) === Number(chiTiet.maLichThi)
-                    );
-  
-                    return (
-                      <div key={index} className="p-4 bg-[#fceec7] border-[#F16F33] text-black border-3 rounded-md mb-2 relative">
-                        <button
-                          className="absolute top-2 right-2 text-black hover:text-red-700"
-                          onClick={() => {
-                            const updatedList = chiTietDangKyList.filter((_, i) => i !== index);
-                            setChiTietDangKyList(updatedList);
-                          }}
-                        >
-                          <X />
-                        </button>
-                        <p><strong>Name:</strong> {chiTiet.hoTenThiSinh}</p>
-                        <div className="flex justify-between">
-                          <p><strong>CCCD:</strong> {chiTiet.cccd}</p>
-                          <p><strong>Date of Birth:</strong> {chiTiet.ngaySinh}</p>
-                        </div>
-                        {selectedSchedule && (
-                          <p><strong>Schedule:</strong> {`${new Date(selectedSchedule.thoiGianThi).toLocaleString()} - ${selectedSchedule.kyThi.tenKT}`}</p>
-                        )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <InputField label="Name" name="tenKH" value={formData.tenKH} onChange={handleChange} placeholder="Alice" />
+                <InputField label="Phone" name="sdt" value={formData.sdt} onChange={handleChange} placeholder="+84123456789" />
+                <InputField label="Email" name="email" value={formData.email} onChange={handleChange} placeholder="abc@example.com" />
+                <InputField label="Address" name="diaChi" value={formData.diaChi} onChange={handleChange} placeholder="HOME" />
+
+                {chiTietDangKyList.map((chiTiet, index) => {
+                  const selectedSchedule = scheduleList.find(
+                    (schedule) => Number(schedule.maLichThi) === Number(chiTiet.maLichThi)
+                  );
+
+                  return (
+                    <div key={index} className="p-4 bg-[#fceec7] border-[#F16F33] text-black border-3 rounded-md mb-2 relative">
+                      <button
+                        type="button"
+                        className="absolute top-2 right-2 text-black hover:text-red-700"
+                        onClick={() => {
+                          const updatedList = chiTietDangKyList.filter((_, i) => i !== index);
+                          setChiTietDangKyList(updatedList);
+                          if (selectedSchedule) {
+                            setScheduleList((prev) =>
+                              prev.map((s) =>
+                                s.maLichThi === selectedSchedule.maLichThi
+                                  ? { ...s, soThiSinhDK: s.soThiSinhDK - 1 }
+                                  : s
+                              )
+                            );
+                          }
+                        }}
+                      >
+                        <X />
+                      </button>
+                      <p>
+                        <span className="font-aftersick">Name:</span>{' '}
+                        <span className="font-goldplay">{chiTiet.hoTenThiSinh}</span>
+                      </p>
+
+                      <div className="flex justify-between">
+                        <p>
+                          <span className="font-aftersick">CCCD:</span>{' '}
+                          <span className="font-goldplay">{chiTiet.cccd}</span>
+                        </p>
+                        <p>
+                          <span className="font-aftersick">Date of Birth:</span>{' '}
+                          <span className="font-goldplay">{chiTiet.ngaySinh}</span>
+                        </p>
                       </div>
-                    );
-                  })}
-  
-                  {isAddingChiTiet ? (
-                    <div className="p-4 border-2 border-[#F16F33] rounded-md">
-                      <div className="space-y-2">
-                        <div>
-                          <label className="text-sm font-medium text-black">Schedule</label>
-                          <Select
-                            onValueChange={(value) =>
-                              setChiTietForm({ ...chiTietForm, maLichThi: parseInt(value) })
-                            }
-                            value={chiTietForm.maLichThi ? String(chiTietForm.maLichThi) : ""}
-                          >
-                            <SelectTrigger className="mt-1 border-black border w-full text-black">
-                              <SelectValue placeholder="Select a schedule" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {scheduleList.map((schedule) => (
-                                <SelectItem key={schedule.maLichThi} value={schedule.maLichThi.toString()}>
+
+                      {selectedSchedule && (
+                        <p>
+                          <span className="font-aftersick">Schedule:</span>{' '}
+                          <span className="font-goldplay">
+                            {`${new Date(selectedSchedule.thoiGianThi).toLocaleString()} - ${selectedSchedule.kyThi.tenKT}`}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {isAddingChiTiet ? (
+                  <div className="p-4 border-2 border-[#F16F33] rounded-md">
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-sm font-medium text-black font-aftersick">Schedule</label>
+                        <Select
+                          onValueChange={(value) =>
+                            setChiTietForm({ ...chiTietForm, maLichThi: parseInt(value) })
+                          }
+                          value={chiTietForm.maLichThi ? String(chiTietForm.maLichThi) : ""}
+                        >
+                          <SelectTrigger className="mt-1 border-black border w-full text-black font-goldplay">
+                            <SelectValue placeholder="Select a schedule" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {scheduleList.map((schedule) => {
+                              const isFull = schedule.soThiSinhDK >= schedule.soThiSinhTD;
+                              return (
+                                <SelectItem
+                                  key={schedule.maLichThi}
+                                  value={schedule.maLichThi.toString()}
+                                  className="font-goldplay"
+                                  disabled={isFull}
+                                >
                                   {`Exam: ${schedule.kyThi.tenKT} - Time: ${new Date(schedule.thoiGianThi).toLocaleString()} - Quantity: ${schedule.soThiSinhDK}/${schedule.soThiSinhTD}`}
+                                  {isFull && " (Full)"}
                                 </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <InputField label="Name" name="hoTenThiSinh" value={chiTietForm.hoTenThiSinh} onChange={handleChiTietChange} placeholder="Enter name" />
-                        <InputField label="CCCD" name="cccd" value={chiTietForm.cccd} onChange={handleChiTietChange} placeholder="Enter CCCD" />
-                        <InputField label="Date of Birth" name="ngaySinh" value={chiTietForm.ngaySinh} onChange={handleChiTietChange} placeholder="Enter date of birth" />
-  
-                        <div className="flex justify-end pt-2">
-                          <Button type="button" onClick={handleCompleteChiTiet} className="bg-[#FCE2A9] hover:bg-amber-300 text-black rounded px-4 py-2 text-sm">
-                            Add
-                          </Button>
-                        </div>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <InputField label="Name" name="hoTenThiSinh" value={chiTietForm.hoTenThiSinh} onChange={handleChiTietChange} placeholder="Enter name" />
+                      <InputField label="CCCD" name="cccd" value={chiTietForm.cccd} onChange={handleChiTietChange} placeholder="Enter CCCD" />
+                      <InputField label="Date of Birth" name="ngaySinh" value={chiTietForm.ngaySinh} onChange={handleChiTietChange} placeholder="Enter date of birth" />
+
+                      <div className="flex justify-end pt-2">
+                        <Button type="button" onClick={handleCompleteChiTiet} className="bg-[#FCE2A9] hover:bg-amber-300 text-black rounded px-4 py-2 text-sm font-aftersick">
+                          Add
+                        </Button>
                       </div>
                     </div>
-                  ) : (
-                    <Button
-                      type="button"
-                      onClick={handleAddChiTiet}
-                      className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-4 py-2 text-sm flex items-center gap-1"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add Info
-                    </Button>
-                  )}
-  
-                  <div className="flex justify-end pt-4">
-                    <Button
-                      type="button"
-                      onClick={handleFinalComplete}
-                      className="bg-[#FCE2A9] hover:bg-amber-300 text-black px-6 py-2 rounded"
-                    >
-                      Complete
-                    </Button>
                   </div>
-                </form>
-              </div>
-            )}
-            
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={handleAddChiTiet}
+                    className="bg-orange-500 hover:bg-orange-600 text-white rounded-full px-4 py-2 text-sm flex items-center gap-1 font-aftersick"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Info
+                  </Button>
+                )}
+
+                <div className="flex justify-end pt-4">
+                  <Button
+                    type="button"
+                    onClick={handleFinalComplete}
+                    className="bg-[#FCE2A9] hover:bg-amber-300 text-black px-6 py-2 rounded font-aftersick"
+                  >
+                    Complete
+                  </Button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       </div>
@@ -480,13 +435,13 @@ export default function CustomerRegistrationPage() {
 function InputField({ label, name, value, onChange, placeholder }: any) {
   return (
     <div>
-      <label className="text-sm font-medium text-black">{label}</label>
+      <label className="text-sm font-medium text-black font-aftersick">{label}</label>
       <Input
         name={name}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="mt-1 border-black border-1 w-full text-black"
+        className="mt-1 border-black border-1 w-full text-black font-goldplay"
       />
     </div>
   );

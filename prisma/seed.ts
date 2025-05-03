@@ -59,10 +59,11 @@ async function main() {
 }
 
 main()
-  .then(async() => {
-    await prisma.$disconnect()
+  .then(async () => {
+    await prisma.$disconnect();
   })
-  .catch(async() => {
-    await prisma.$disconnect()
-    process.exit(1)
-  })
+  .catch(async (e) => {
+    console.error('SEED ERROR:', e); // <--- Thêm dòng này
+    await prisma.$disconnect();
+    process.exit(1);
+  });

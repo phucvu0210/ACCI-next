@@ -73,7 +73,7 @@ model PhieuDangKy {
 model ChiTietDangKy {
   maCTDK       Int    @id @default(autoincrement())
   hoTenThiSinh String
-  cccd         String @unique @db.VarChar(12)
+  cccd         String @db.VarChar(12)
   ngaySinh     DateTime
   maPDK        Int
   maLichThi    Int
