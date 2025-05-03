@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import { createRequest } from "@/lib/request";
+import { useRouter } from "next/navigation";
 
 export default function EmailPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [summaryContent, setSummaryContent] = useState("");
   const [contentPdf, setPdf] = useState("");
   const [savedEmail, setSavedEmail] = useState("");
@@ -56,7 +58,7 @@ export default function EmailPage() {
         const lichThiList = await createRequest({
           _model: "LichThi",
           _method: "GET",
-          _where: { maLichThi: { in: lichThiIds } }, // Sửa _in thành in
+          _where: { maLichThi: { in: lichThiIds } },
           _relation: ["kyThi"],
         }) as any[];
 
@@ -144,12 +146,13 @@ export default function EmailPage() {
       }
 
       toast.success("Email sent successfully");
+      // Chuyển hướng về trang home sau 2 giây
       setTimeout(() => {
-        window.location.href = "/";
+        router.push("/home");
       }, 2000);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to send email");
+      toast.error("Failed to send email: " + (error.message || "Unknown error"));
     }
   };
 
