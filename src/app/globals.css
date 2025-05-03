@@ -147,3 +147,13 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+html, body {
+  @apply w-full h-full m-0 p-0;
+}
+
+.date-picker-black::-webkit-calendar-picker-indicator {
+  filter: invert(90%);
+  margin-left: auto! important; 
+  padding-right: 100px
+}
