@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "App",
+  title: "ACCI",
   icons: {
     icon: '/logo.svg'
   }

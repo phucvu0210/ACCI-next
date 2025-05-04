@@ -13,21 +13,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id       Int    @id @default(autoincrement())
-  phone    String @unique
-  password String
-  roleId   Int?
-  roleRel  Role?  @relation(fields: [roleId], references: [id])
-}
-
-model Role {
-  id   Int    @id @default(autoincrement())
-  name String @unique
-  User User[]
-}
-
-
 model NhanVien {
   maNV     Int    @id @default(autoincrement())
   hoTen    String

@@ -19,13 +19,23 @@ type KH = {
   loaiKH: string;
 };
 
+function formatDateToDDMMYYYY(dateStr: string): string {
+  const [day, month, year] = dateStr.split('/');
+  return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+}
+
+function parseDateDDMMYYYY(dateStr: string): Date {
+  const [day, month, year] = dateStr.split('/').map(Number);
+  return new Date(year, month - 1, day); // month - 1 vì JavaScript dùng 0-based month
+}
+
 export default function CustomerRegistrationPage() {
   const [formData, setFormData] = useState({
     tenKH: "",
     sdt: "",
     email: "",
     diaChi: "",
-    loaiKH: "Tu Do",
+    loaiKH: "individual",
   });
 
   const [existingCustomerId, setExistingCustomerId] = useState<number | null>(null);
@@ -83,7 +93,13 @@ export default function CustomerRegistrationPage() {
     const results = (await createRequest({
       _model: "KhachHang",
       _method: "GET",
-      _where: { tenKH: query },
+      _where: {
+        OR: [
+          { tenKH: { contains: query } },
+          { sdt: { contains: query } },
+          { email: { contains: query } },
+        ],
+      },
     })) as KH[];
 
     if (Array.isArray(results)) {
@@ -113,9 +129,19 @@ export default function CustomerRegistrationPage() {
       return;
     }
 
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(chiTietForm.ngaySinh)) {
-      toast.error("Date of Birth must follow YYYY-MM-DD format.");
+    const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+    const match = chiTietForm.ngaySinh.match(dateRegex);
+    if (!match) {
+      toast.error("Date of Birth must follow DD/MM/YYYY format.");
+      return;
+    }
+
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10);
+    const year = parseInt(match[3], 10);
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() + 1 !== month || date.getDate() !== day) {
+      toast.error("Invalid Date of Birth.");
       return;
     }
 
@@ -187,7 +213,7 @@ export default function CustomerRegistrationPage() {
         _model: "PhieuDangKy",
         _method: "POST",
         ngayDangKy: new Date(),
-        trangThai: "Chua thanh toan",
+        trangThai: "unpaid",
         tongTien,
         maKH: khachHang,
         maNVTN: currentUser.maNV,
@@ -214,7 +240,7 @@ export default function CustomerRegistrationPage() {
           _method: "POST",
           ...chiTiet,
           cccd: chiTiet.cccd,
-          ngaySinh: new Date(chiTiet.ngaySinh),
+          ngaySinh: parseDateDDMMYYYY(chiTiet.ngaySinh),
           maLichThi: Number(chiTiet.maLichThi),
           maPDK: phieuDangKy.maPDK,
         });
@@ -223,14 +249,17 @@ export default function CustomerRegistrationPage() {
       // Chờ tất cả các thao tác với database hoàn tất
       await Promise.all(databaseUpdates);
 
+      // Hiển thị thông báo thành công
       toast.success("Registration successful");
 
-      // Chỉ chuyển hướng sau khi tất cả dữ liệu đã được lưu vào database
-      router.push(`/email?maPDK=${phieuDangKy.maPDK}`);
+      // Chờ 1 giây trước khi chuyển hướng
+      setTimeout(() => {
+        router.push(`/email?maPDK=${phieuDangKy.maPDK}`);
+      }, 1000);
 
-      // Reset state sau khi chuyển hướng
+      // Reset state sau khi hoàn tất
       setChiTietDangKyList([]);
-      setFormData({ tenKH: "", sdt: "", email: "", diaChi: "", loaiKH: "Tu Do" });
+      setFormData({ tenKH: "", sdt: "", email: "", diaChi: "", loaiKH: "individual" });
       setExistingCustomerId(null);
 
     } catch (error) {
@@ -258,7 +287,7 @@ export default function CustomerRegistrationPage() {
     }
 
     setExistingCustomerId(null);
-    setFormData({ tenKH: "", sdt: "", email: "", diaChi: "", loaiKH: "Tu Do" });
+    setFormData({ tenKH: "", sdt: "", email: "", diaChi: "", loaiKH: "individual" });
   };
 
   return (
@@ -268,7 +297,7 @@ export default function CustomerRegistrationPage() {
           <div className="p-6">
             <div className="space-y-6">
               <div>
-                <h4 className="text-orange-500 font-medium text-sm font-aftersick">ACCI</h4>
+                <h4 className="text-[#e2725b] text-4xl self-start">ACCI</h4>
                 <h1 className="text-2xl font-semibold mt-1 text-black font-aftersick">
                   Register for <span className="text-orange-500">Individual Customer</span>
                 </h1>
@@ -279,7 +308,7 @@ export default function CustomerRegistrationPage() {
                 <div className="relative">
                   <Input
                     className="pl-3 pr-10 py-2 rounded-4xl border-black border w-full text-black font-goldplay"
-                    placeholder="Alice"
+                    placeholder="Search by name, phone, or email"
                     value={searchQuery}
                     onChange={(e) => handleSearch(e.target.value)}
                   />
@@ -344,7 +373,7 @@ export default function CustomerRegistrationPage() {
                         </p>
                         <p>
                           <span className="font-aftersick">Date of Birth:</span>{' '}
-                          <span className="font-goldplay">{chiTiet.ngaySinh}</span>
+                          <span className="font-goldplay">{formatDateToDDMMYYYY(chiTiet.ngaySinh)}</span>
                         </p>
                       </div>
 
@@ -394,7 +423,7 @@ export default function CustomerRegistrationPage() {
                       </div>
                       <InputField label="Name" name="hoTenThiSinh" value={chiTietForm.hoTenThiSinh} onChange={handleChiTietChange} placeholder="Enter name" />
                       <InputField label="CCCD" name="cccd" value={chiTietForm.cccd} onChange={handleChiTietChange} placeholder="Enter CCCD" />
-                      <InputField label="Date of Birth" name="ngaySinh" value={chiTietForm.ngaySinh} onChange={handleChiTietChange} placeholder="Enter date of birth" />
+                      <InputField label="Date of Birth" name="ngaySinh" value={chiTietForm.ngaySinh} onChange={handleChiTietChange} placeholder="DD/MM/YYYY" />
 
                       <div className="flex justify-end pt-2">
                         <Button type="button" onClick={handleCompleteChiTiet} className="bg-[#FCE2A9] hover:bg-amber-300 text-black rounded px-4 py-2 text-sm font-aftersick">
