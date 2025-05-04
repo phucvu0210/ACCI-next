@@ -83,7 +83,7 @@ export default function CustomerRegistrationPage() {
     const results = (await createRequest({
       _model: "KhachHang",
       _method: "GET",
-      _where: { tenKH: query },
+      _where: { tenKH: query, loaiKH: "Tu Do" },
     })) as KH[];
 
     if (Array.isArray(results)) {
