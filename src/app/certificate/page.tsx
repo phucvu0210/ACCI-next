@@ -43,7 +43,7 @@ interface ExamCardData {
   maCC: string;
 }
 
-export default function CertificatePage() {
+export default function ReceiveCertificatePage() {
   const searchParams = useSearchParams();
 
   const [examCardData, setExamCardData] = useState<ExamCardData | null>(null);
@@ -86,7 +86,7 @@ export default function CertificatePage() {
       setResult(normalized.examResult !== 'N/A' ? normalized.examResult : '');
       setReceivedDate(
         normalized.certificateIssueDate !== 'N/A'
-          ? new Date(normalized.certificateIssueDate).toISOString().split('T')[0]
+          ? normalized.certificateIssueDate
           : ''
       );
       setCertificate(
@@ -107,16 +107,39 @@ export default function CertificatePage() {
   }
 
   function normalizeExamCardData(data: any): ExamCardData {
+    const formatDateTime = (isoString: string | undefined): string => {
+      if (!isoString) return 'N/A';
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) return 'N/A';
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    };
+
+    const formatDate = (isoString: string | undefined): string => {
+      if (!isoString) return 'N/A';
+      const date = new Date(isoString);
+      if (isNaN(date.getTime())) return 'N/A';
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    };
+
     return {
       name: data.chiTietDangKy?.phieuDangKy?.khachHang?.tenKH || 'N/A',
       cid: data.chiTietDangKy?.cccd || 'N/A',
-      exam: `${data.lichThiPhongThi?.lichThi?.thoiGianThi.slice(0, -5)} - ${data.lichThiPhongThi?.lichThi?.kyThi?.tenKyThi}` || 'N/A',
+      exam: `${formatDateTime(data.lichThiPhongThi?.lichThi?.thoiGianThi)
+      } - ${data.lichThiPhongThi?.lichThi?.kyThi?.tenKT || 'N/A'}` || 'N/A',
       registerType: data.chiTietDangKy?.phieuDangKy?.khachHang?.loaiKH || 'N/A',
-      issueDate: data.ngayPhatHanh.slice(0, -5) || 'N/A',
+      issueDate: formatDateTime(data.ngayPhatHanh) || 'N/A',
       id: data.soBaoDanh || 'N/A',
       room: data.lichThiPhongThi?.phongThi?.tenPhong || 'N/A',
       examResult: data.ketQuaThi?.diemThi || 'N/A',
-      certificateIssueDate: data.ketQuaThi?.chungChi?.ngayCap || 'N/A',
+      certificateIssueDate: formatDate(data.ketQuaThi?.chungChi?.ngayCap) || 'N/A',
       certificateStatus: data.ketQuaThi?.chungChi?.trangThaiNhan || 'N/A',
       maPDT: data.maPDT?.toString() || 'N/A',
       maKH: data.chiTietDangKy?.phieuDangKy?.maKH?.toString() || 'N/A',
@@ -135,9 +158,13 @@ export default function CertificatePage() {
         throw new Error('maCC is required');
       }
 
+      // Chuyển đổi định dạng dd/mm/yyyy về yyyy-mm-dd trước khi gửi API
+      const [day, month, year] = receivedDate.split('/');
+      const formattedDate = receivedDate ? `${year}-${month}-${day}` : null;
+
       const payload = {
         maCC,
-        ngayCap: receivedDate || null,
+        ngayCap: formattedDate,
         trangThaiNhan: String(status),
       };
 
@@ -198,11 +225,13 @@ export default function CertificatePage() {
                   Received Date
                 </label>
                 <Input
-                  type="date"
+                  type="text"
                   value={receivedDate}
                   onChange={(e) => setReceivedDate(e.target.value)}
-                  className="w-full h-12 border-1 border-black rounded date-picker-black"
+                  placeholder="dd/mm/yyyy"
+                  className="w-full h-12 border-1 border-black rounded"
                   style={goldplay}
+                  disabled={status === 'not-received'}
                 />
               </div>
               <div className="w-full mb-6">
