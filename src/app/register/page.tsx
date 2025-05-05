@@ -94,10 +94,15 @@ export default function CustomerRegistrationPage() {
       _model: "KhachHang",
       _method: "GET",
       _where: {
-        OR: [
-          { tenKH: { contains: query } },
-          { sdt: { contains: query } },
-          { email: { contains: query } },
+        AND: [
+          {
+            OR: [
+              { tenKH: { contains: query } },
+              { sdt: { contains: query } },
+              { email: { contains: query } },
+            ],
+          },
+          { loaiKH: "individual" },
         ],
       },
     })) as KH[];
@@ -368,7 +373,7 @@ export default function CustomerRegistrationPage() {
 
                       <div className="flex justify-between">
                         <p>
-                          <span className="font-aftersick">CCCD:</span>{' '}
+                          <span className="font-aftersick">CID:</span>{' '}
                           <span className="font-goldplay">{chiTiet.cccd}</span>
                         </p>
                         <p>
@@ -422,7 +427,7 @@ export default function CustomerRegistrationPage() {
                         </Select>
                       </div>
                       <InputField label="Name" name="hoTenThiSinh" value={chiTietForm.hoTenThiSinh} onChange={handleChiTietChange} placeholder="Enter name" />
-                      <InputField label="CCCD" name="cccd" value={chiTietForm.cccd} onChange={handleChiTietChange} placeholder="Enter CCCD" />
+                      <InputField label="CID" name="cccd" value={chiTietForm.cccd} onChange={handleChiTietChange} placeholder="Enter CID" />
                       <InputField label="Date of Birth" name="ngaySinh" value={chiTietForm.ngaySinh} onChange={handleChiTietChange} placeholder="DD/MM/YYYY" />
 
                       <div className="flex justify-end pt-2">
