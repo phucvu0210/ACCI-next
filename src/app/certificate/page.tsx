@@ -132,7 +132,7 @@ export default function ReceiveCertificatePage() {
     };
 
     return {
-      name: data.chiTietDangKy?.phieuDangKy?.khachHang?.tenKH || 'N/A',
+      name: data.chiTietDangKy?.hoTenThiSinh || 'N/A',
       cid: data.chiTietDangKy?.cccd || 'N/A',
       exam: `${formatDateTime(data.lichThiPhongThi?.lichThi?.thoiGianThi)
       } - ${data.lichThiPhongThi?.lichThi?.kyThi?.tenKT || 'N/A'}` || 'N/A',
