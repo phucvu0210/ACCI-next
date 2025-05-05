@@ -195,7 +195,7 @@ export default function ReceiveCertificatePage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#fef6e6] text-gray-900 flex flex-col" style={goldplay}>
+    <div className="min-h-screen w-full bg-[#FDFAE7] text-gray-900 flex flex-col" style={goldplay}>
       <div className="w-full px-4 py-4 flex-1 flex justify-center">
         <div className="w-full max-w-[100%] px-4 py-2">
           <h1 className="text-4xl text-[#F16F33] mb-2" style={aftersick}>

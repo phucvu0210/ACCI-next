@@ -56,7 +56,7 @@ export default function Home () {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center bg-[#fef6e6] w-full text-black">
+      className="min-h-screen flex items-center justify-center bg-[#FDFAE7] w-full text-black">
       <div className="p-8 rounded-xl w-96 bg-white border border-gray-300">
         <h2
           className="text-2xl font-bold text-center mb-6 text-[#F16F33]">Login</h2>

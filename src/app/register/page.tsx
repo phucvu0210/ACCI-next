@@ -257,7 +257,7 @@ export default function CustomerRegistrationPage() {
       // Hiển thị thông báo thành công
       toast.success("Registration successful");
 
-      // Chờ 1 giây trước khi chuyển hướng
+      // Chờ 0,5 giây trước khi chuyển hướng
       setTimeout(() => {
         router.push(`/email?maPDK=${phieuDangKy.maPDK}`);
       }, 500);
