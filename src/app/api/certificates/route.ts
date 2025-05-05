@@ -71,12 +71,13 @@ export async function POST(request: Request) {
     let parsedNgayCap = null;
 
     // Nếu trangThaiNhan là 'not-received', đặt ngayCap thành null
-    if (trangThaiNhan !== 'not-received' && isNaN(ngayCap)) {
+    if (trangThaiNhan !== 'not received' && ngayCap) {
       parsedNgayCap = new Date(ngayCap);
       if (isNaN(parsedNgayCap.getTime())) {
         return NextResponse.json({ error: 'Invalid ngayCap' }, { status: 400 });
       }
     }
+
 
     if (isNaN(parsedMaCC)) {
       return NextResponse.json({ error: 'Invalid maCC' }, { status: 400 });

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { RadioGroup } from '@/components/ui/radioGroup';
 import ExamCard from '@/components/ui/examCard2';
+import { toast } from "sonner";
 import '@/app/style/font.css';
 
 const aftersick = { fontFamily: '"Aftersick DEMO", Arial, sans-serif' };
@@ -45,12 +46,13 @@ interface ExamCardData {
 
 export default function ReceiveCertificatePage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [examCardData, setExamCardData] = useState<ExamCardData | null>(null);
   const [result, setResult] = useState('');
   const [receivedDate, setReceivedDate] = useState('');
   const [certificate, setCertificate] = useState('no');
-  const [status, setStatus] = useState('not-received');
+  const [status, setStatus] = useState('not received');
   const [maCC, setMaCC] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +97,7 @@ export default function ReceiveCertificatePage() {
           : 'no'
       );
       setStatus(
-        normalized.certificateStatus !== 'N/A' ? normalized.certificateStatus : 'not-received'
+        normalized.certificateStatus !== 'N/A' ? normalized.certificateStatus : 'not received'
       );
       setMaCC(normalized.maCC);
     } catch (err: any) {
@@ -158,9 +160,13 @@ export default function ReceiveCertificatePage() {
         throw new Error('maCC is required');
       }
 
-      // Chuyển đổi định dạng dd/mm/yyyy về yyyy-mm-dd trước khi gửi API
       const [day, month, year] = receivedDate.split('/');
       const formattedDate = receivedDate ? `${year}-${month}-${day}` : null;
+
+      if (status === 'received' && !receivedDate) {
+        toast.error("Invalid received date");
+        return;
+      }
 
       const payload = {
         maCC,
@@ -179,9 +185,12 @@ export default function ReceiveCertificatePage() {
         throw new Error(errorData.error || 'Failed to save data');
       }
 
-      alert('Data saved successfully!');
+      toast.success("Data saved successfully!");
+      setTimeout(() => {
+        router.push('/home');
+      }, 1000);
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      toast.error(`Error: ${err.message}`);
     }
   };
 
@@ -231,7 +240,7 @@ export default function ReceiveCertificatePage() {
                   placeholder="dd/mm/yyyy"
                   className="w-full h-12 border-1 border-black rounded"
                   style={goldplay}
-                  disabled={status === 'not-received'}
+                  disabled={status === 'not received'}
                 />
               </div>
               <div className="w-full mb-6">
@@ -256,7 +265,7 @@ export default function ReceiveCertificatePage() {
                   onChange={setStatus}
                   options={[
                     { label: 'Received', value: 'received' },
-                    { label: 'Not received', value: 'not-received' },
+                    { label: 'Not received', value: 'not received' },
                   ]}
                 />
               </div>
