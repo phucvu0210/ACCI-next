@@ -60,7 +60,7 @@ export default function TraCuuPhieuDuThi () {
               continue
             }
 
-            const [cc, lichThi] = await Promise.all([
+            const [cc, lichThi, pgh] = await Promise.all([
               createRequest({
                 _model: 'ChungChi',
                 _method: 'GET',
@@ -72,13 +72,19 @@ export default function TraCuuPhieuDuThi () {
                 _relation: ['kyThi'],
                 _where: { maLichThi },
               }),
+              createRequest({
+                _model: 'PhieuGiaHan',
+                _method: 'GET',
+                _where: { maPDT: phieu.maPDT },
+              }),
             ])
 
             if (Array.isArray(cc) && cc.length > 0) {
               const tenKyThi = lichThi?.[0]?.kyThi?.tenKT || '---'
               filtered.push({
                 ...phieu,
-                name: phieu.chiTietDangKy?.hoTenThiSinh || 'Không rõ tên',
+                pgh: pgh?.[0] || null,
+                name: phieu.chiTietDangKy?.hoTenThiSinh || 'No Name',
                 exam: tenKyThi,
                 issueDate: cc[0].ngayCap
                   ? new Date(cc[0].ngayCap).toLocaleDateString('vi-VN')
