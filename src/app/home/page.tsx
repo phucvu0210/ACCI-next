@@ -11,7 +11,7 @@ const actions = [
   { icon: '/icons/register-corporate.png', title: 'Register for', subtitle: 'Corporate Customer', route: '/register_corporate', allowedRoles: ['reception'] },
   { icon: '/icons/issue.png', title: 'Issue', route: '/issue', allowedRoles: ['reception'] },
   { icon: '/icons/register-extension.png', title: 'Register Extension', route: '/register_extension', allowedRoles: ['reception'] },
-  { icon: '/icons/certificate.png', title: 'Certificate', route: '/certificate', allowedRoles: ['reception'] },
+  { icon: '/icons/certificate.png', title: 'Certificate', route: '/exam-form', allowedRoles: ['reception'] },
   { icon: '/icons/payment.png', title: 'Payment', route: '/payment', allowedRoles: ['accounting'] },
   { icon: '/icons/issue-extension.png', title: 'Issue Extension', route: '/issue_extension', allowedRoles: ['accounting'] },
   { icon: '/icons/record-result.png', title: 'Record Result', route: '/record_result', allowedRoles: ['data entry'] },

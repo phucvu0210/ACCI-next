@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import { useEffect, useState } from 'react'
 import { createRequest } from '@/lib/request'
@@ -6,6 +6,7 @@ import ExamCard from '@/components/ui/examCard3'
 import ExamCardDetail from '@/components/ui/examCard4'
 import '@/app/style/font.css'
 import { Input } from '@/components/ui/input'
+import { useRouter } from "next/navigation";
 
 const aftersick = { fontFamily: '"Aftersick DEMO", Arial, sans-serif' }
 const goldplay = { fontFamily: 'Goldplay, Arial, sans-serif' }
@@ -15,6 +16,7 @@ interface ExamCardData {
   exam: string;
   issueDate: string;
   id: string | number;
+  maPDT: string | number; // Added to match usage in onClick
 }
 
 export default function TraCuuPhieuDuThi () {
@@ -22,6 +24,7 @@ export default function TraCuuPhieuDuThi () {
   const [filteredPhieuList, setFilteredPhieuList] = useState<ExamCardData[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCard, setSelectedCard] = useState<ExamCardData | null>(null)
+  const router = useRouter();
 
   const handleSearch = (query: string) => {
     setSearchQuery(query)
@@ -57,7 +60,7 @@ export default function TraCuuPhieuDuThi () {
               continue
             }
 
-            const [cc, lichThi, giaHan] = await Promise.all([
+            const [cc, lichThi] = await Promise.all([
               createRequest({
                 _model: 'ChungChi',
                 _method: 'GET',
@@ -81,7 +84,7 @@ export default function TraCuuPhieuDuThi () {
                   ? new Date(cc[0].ngayCap).toLocaleDateString('vi-VN')
                   : '--',
                 id: phieu.soBaoDanh || phieu.maPDT,
-                giaHan,
+                maPDT: phieu.maPDT, // Ensure maPDT is included
               })
             }
           }
@@ -156,7 +159,7 @@ export default function TraCuuPhieuDuThi () {
                 <button
                   className="px-4 py-2 rounded-md bg-orange-500 text-white  cursor-pointer"
                   onClick={() =>
-                    window.location.href = `/certificate?maPDT=${selectedCard.maPDT}`
+                    router.push(`/certificate?maPDT=${selectedCard.maPDT}`)
                   }
                 >
                   Select

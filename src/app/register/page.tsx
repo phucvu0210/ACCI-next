@@ -260,7 +260,7 @@ export default function CustomerRegistrationPage() {
       // Chờ 1 giây trước khi chuyển hướng
       setTimeout(() => {
         router.push(`/email?maPDK=${phieuDangKy.maPDK}`);
-      }, 1000);
+      }, 500);
 
       // Reset state sau khi hoàn tất
       setChiTietDangKyList([]);
